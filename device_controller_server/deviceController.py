@@ -9,16 +9,8 @@ config.read("../setting.ini")
 adbLocation = config.get("deviceController","adbLocation")
 apkDirectory = config.get("deviceController","apkDirectory")
 tcpdumpDirectory = config.get("deviceController", "tcpdumpDirectory")
-pcapDirectory = config.get("deviceController","pcapDirectory")
 pcapToHarDirectory = config.get("deviceController","pcapToHarDirectory")
 pcapSaveDirectory = config.get("deviceController","pcapSaveDirectory")
-
-#adbLocation = '/Users/macgongmon/Downloads/android-sdk/platform-tools/'
-#apkDirectory = '/Users/macgongmon/Desktop/apk/'
-#tcpdumpDirectory = ''
-#pcapDirectory = '/Users/macgongmon/Documents/Github/MobilArchive/'
-#pcapToHarDirectory = '/Users/macgongmon/Documents/Github/MobilArchive/device_controller_server/pcap2har-master/'
-#pcapSaveDirectory = '/storeage/emulated/0/'
 
 
 def runTest(pkg_name,apk_name):

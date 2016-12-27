@@ -2,19 +2,26 @@
 import socket
 import deviceController
 import sys
+import ConfigParser
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-HOST = '168.188.129.206'
-PORT = 8080
 
-har_path = "/home/dbgustlr92/Desktop/MobilArchive/device_controller_server/test.har"
+config = ConfigParser.ConfigParser()
+config.read('../setting.ini')
 
-#s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+har_path = config.get('main','har_path')
+pcap_path = config.get('main','pcap_path')
+HOST = config.get('main','HOST')
+PORT = config.get('main','PORT')
+
+
 s = socket.socket()
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-s.bind((HOST, PORT))
+print('HOST : '+HOST+' PORT : '+PORT)
+s.bind((HOST,int(PORT)))
 s.listen(1)
 
 while True:
@@ -49,9 +56,23 @@ while True:
             while (data):
                 conn.send(data)
                 data = f.read(1024)
+                print(data)
             conn.sendall('finished')
             f.close()
             print('finish send har file')
+
+            
+            print('read pcap file and send to web server')
+            f = open(pcap_path, 'rb')
+            data = f.read(1024)
+            while (data):
+                conn.send(data)
+                data = f.read(1024)
+            conn.sendall('finished')
+            f.close()
+            print('finish send pcap file')
+            
+
         conn.close()
 
         print 'conn close'

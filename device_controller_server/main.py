@@ -3,6 +3,7 @@ import socket
 import deviceController
 import sys
 import ConfigParser
+import time
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -13,8 +14,10 @@ config.read('../setting.ini')
 
 har_path = config.get('main','har_path')
 pcap_path = config.get('main','pcap_path')
+mp4_path = config.get('main','mp4_path')
 HOST = config.get('main','HOST')
 PORT = config.get('main','PORT')
+
 
 
 s = socket.socket()
@@ -56,10 +59,11 @@ while True:
             while (data):
                 conn.send(data)
                 data = f.read(1024)
-                print(data)
             conn.sendall('finished')
             f.close()
             print('finish send har file')
+
+            time.sleep(2)
 
             
             print('read pcap file and send to web server')
@@ -71,6 +75,18 @@ while True:
             conn.sendall('finished')
             f.close()
             print('finish send pcap file')
+
+            time.sleep(2)
+
+            print('read mp4 file and send to web server')
+            f = open(mp4_path, 'rb')
+            data = f.read(1024)
+            while (data):
+                conn.send(data)
+                data = f.read(1024)
+            conn.sendall('finished')
+            f.close()
+            print('finish send mp4 file')
             
 
         conn.close()

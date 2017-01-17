@@ -43,9 +43,13 @@ def pullPcap(pcapName):
     print (command)
     subprocess.check_call(command, shell=True)
 
-    command = adbLocation + "adb shell rm " + pcapSaveDirectory + "screen.mp4"
-    print (command)
+    command = adbLocation + "adb pull " + pcapSaveDirectory + "screen.mp4"
+    print(command)
     subprocess.check_call(command, shell=True)
+
+    #command = adbLocation + "adb shell rm " + pcapSaveDirectory + "screen.mp4"
+    #print (command)
+    #subprocess.check_call(command, shell=True)
 
 
 def installAPK(apk_name):
@@ -64,14 +68,15 @@ def installAPK(apk_name):
 def runApp(pkg_name):
     print ('==================== run App ' + pkg_name + '====================')
 
-    command = adbLocation + "adb shell screenrecord " + tcpdumpDirectory + "screen.mp4"
+    command = adbLocation + "adb shell screenrecord " + pcapSaveDirectory + "screen.mp4"
     print(command)
     record = subprocess.Popen(command, shell=True)
 
-    command = adbLocation + "adb shell monkey -p " + pkg_name + " --pct-touch 100 --throttle 1000 100"
+    command = adbLocation + "adb shell monkey -p " + pkg_name + " --pct-touch 20 --throttle 1000 20"
     print ('command : ' + command)
 
     proc_monkdy = subprocess.check_call(command, shell=True)
+    time.sleep(1)
     record.kill()
 
     print ('==================== finish run application ====================\n\n\n')

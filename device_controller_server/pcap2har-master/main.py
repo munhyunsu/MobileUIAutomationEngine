@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#-*- coding: utf-8 -*-
 
 '''
 Main program that converts pcaps to HAR's.
@@ -62,7 +63,8 @@ else:
 logging.info('Processing %s', inputfile)
 
 # parse pcap file
-dispatcher = pcap.EasyParsePcap(filename=inputfile)
+#첫번째 인자로 받은 pcap파일을 dispatcher에 파싱하여 저장
+dispatcher = pcap.EasyParsePcap(filename=inputfile) 
 
 # parse HAR stuff
 session = httpsession.HttpSession(dispatcher)

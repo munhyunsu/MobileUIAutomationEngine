@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 import flow as tcp
 import logging
 
@@ -20,14 +21,16 @@ class FlowBuilder(object):
 
     def add(self, pkt):
         '''
+        pkt : tcp패킷 받음
         filters out unhandled packets, and sorts the remainder into the correct
         flow
         '''
         #shortcut vars
-        src, dst = pkt.socket
+        src, dst = pkt.socket # ((ip.src, tcp.sport), (ip.dst, tcp.dport))
         srcip, srcport = src
         dstip, dstport = dst
         # filter out weird packets, LSONG
+        #5223,5228포트는 뭐지?
         if srcport == 5223 or dstport == 5223:
             logging.warning('hpvirtgrp packets are ignored')
             return
@@ -42,7 +45,7 @@ class FlowBuilder(object):
         # should start a new flow.
         if (src, dst) in self.flowdict:
             try:
-                self.flowdict[(src, dst)][-1].add(pkt)
+                self.flowdict[(src, dst)][-1].add(pkt) #-1번째에 삽입하는 이유는?
             except tcp.NewFlowError:
                 self.new_flow((src, dst), pkt)
         elif (dst, src) in self.flowdict:
@@ -51,7 +54,7 @@ class FlowBuilder(object):
             except tcp.NewFlowError:
                 self.new_flow((dst, src), pkt)
         else:
-            self.new_flow((src, dst), pkt)
+            self.new_flow((src, dst), pkt) # 새로들어운 flow라면 새로운 flow생성
 
     def new_flow(self, socket, packet):
         '''
@@ -65,10 +68,10 @@ class FlowBuilder(object):
         * packet: tcp.Packet
         '''
         newflow = tcp.Flow()
-        newflow.add(packet)
-        if socket in self.flowdict:
+        newflow.add(packet) # netflow추출해서 저장하는 기능?
+        if socket in self.flowdict: #flowdict에 들어있는지 다시검사하는 이유는?
             self.flowdict[socket].append(newflow)
-        else:
+        else: #flowdict에 들어있지 않으면 새로운 플로우로 삽입
             self.flowdict[socket] = [newflow]
 
     def flows(self):

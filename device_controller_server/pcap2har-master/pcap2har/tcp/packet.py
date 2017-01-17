@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 import dpkt
 
 from ..pcaputil import *
@@ -41,7 +42,7 @@ class Packet(object):
         self.flags = tcp.flags
         self.seq_start = self.tcp.seq
         self.seq_end = self.tcp.seq + len(self.tcp.data) # - 1
-        self.rtt = None
+        self.rtt = None #rtt가 있네?
 
     def __cmp__(self, other):
         return cmp(self.ts, other.ts)

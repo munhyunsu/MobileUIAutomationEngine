@@ -1,3 +1,5 @@
+#-*- coding: utf-8 -*-
+
 import logging
 
 import dpkt
@@ -24,7 +26,7 @@ def ParsePcap(dispatcher, filename=None, reader=None):
     if filename:
         f = open(filename, 'rb')
         try:
-            pcap = ModifiedReader(f)
+            pcap = ModifiedReader(f) #ModifiedReader가 뭐지? dpkt안에 들어있는 함수인듯
         except dpkt.dpkt.Error as e:
             logging.warning('failed to parse pcap file %s' % filename)
             return
@@ -51,12 +53,12 @@ def ParsePcap(dispatcher, filename=None, reader=None):
             try:
                 # handle SLL packets, thanks Libo
                 dltoff = dpkt.pcap.dltoff
-                if pcap.dloff == dltoff[dpkt.pcap.DLT_LINUX_SLL]:
-                    eth = dpkt.sll.SLL(buf)
+                if pcap.dloff == dltoff[dpkt.pcap.DLT_LINUX_SLL]: #Data Link Type이 Linux libpcap cooked 인지 확인
+                    eth = dpkt.sll.SLL(buf) # Linux libpcap cooked에 맞도록 캐스팅
                 # otherwise, for now, assume Ethernet
                 else:
-                    eth = dpkt.ethernet.Ethernet(buf)
-                dispatcher.add(ts, buf, eth)
+                    eth = dpkt.ethernet.Ethernet(buf) #일반 이더넷 패킷
+                dispatcher.add(ts, buf, eth) #dispatcher에 패킷 추가
             # catch errors from this packet
             except dpkt.Error as e:
                 errors.append((packet, e, packet_count))
@@ -71,12 +73,13 @@ def ParsePcap(dispatcher, filename=None, reader=None):
             packet_count)
         errors.append((None, error))
 
-
+#메인함수에서 pcap을 파싱하기위해 불리는 함수
 def EasyParsePcap(filename=None, reader=None):
     '''
     Like ParsePcap, but makes and returns a PacketDispatcher for you.
     '''
-    dispatcher = PacketDispatcher()
-    ParsePcap(dispatcher, filename=filename, reader=reader)
-    dispatcher.finish()
+    dispatcher = PacketDispatcher() #PacketDispatcher객체 생성
+    #main함수에서 reade는 입력받지 않음 none으로 들어감
+    ParsePcap(dispatcher, filename=filename, reader=reader) # pcap파일을 실제로 파싱하는 부분
+    dispatcher.finish() #객체 정리
     return dispatcher

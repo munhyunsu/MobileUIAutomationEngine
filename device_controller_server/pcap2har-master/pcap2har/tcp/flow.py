@@ -1,3 +1,5 @@
+#-*- coding: utf-8 -*-
+
 import logging
 import common as tcp
 
@@ -38,6 +40,7 @@ class Flow(object):
 
     def add(self, pkt):
         '''
+        pkt : tcp패킷
         called for every packet coming in, instead of iterating through
         a list
         '''
@@ -50,23 +53,28 @@ class Flow(object):
         # len(self.packets) descending back to 0 (inclusive);
         # normally, this loop will only run for one iteration.
         for i in xrange(len(self.packets), -1, -1):
+            # xrange(start,stop,step)
+            # start는 포함, stop는 미포함
+            # xrange는 range와 같은 역할을 하지만, 리스트형태가 아니라
+            # xrange객체 그대로 반환한다. 
             # pkt is at the correct position if it is at the
             # beginning, or if it is >= the packet at its previous
             # position.
+            # 제대로된 위치인지 파악
             if i == 0 or self.packets[i - 1].ts <= pkt.ts: break
         self.packets.insert(i, pkt)
 
         # look out for handshake
         # add it to the appropriate direction, if we've found or given up on
         # finding handshake
-        if self.handshake is not None:
-            if pkt.flags == TH_SYN:
+        if self.handshake is not None: # 3-handshake가 완료된 상황이라면
+            if pkt.flags == TH_SYN: # 들어온 패킷의 flag가 SYN인지 관찰(3-handshake가 끝났는데 SYN이면 에러
                 # syn packet now probably means a new flow started on the same
                 # socket. Request (demand?) that a new flow be started.
                 raise NewFlowError
             self.merge_pkt(pkt)
         else: # if handshake is None, we're still looking for a handshake
-            if len(self.packets) > 13: # or something like that
+            if len(self.packets) > 13: # 들어온 패킷들의 13개에 hand-shake가 없다면 포기
                 # give up
                 self.handshake = False
                 self.socket = self.packets[0].socket
@@ -90,8 +98,8 @@ class Flow(object):
         Merges the packet into either the forward or reverse stream, depending
         on its direction.
         '''
-        if self.samedir(pkt):
-            self.fwd.add(pkt)
+        if self.samedir(pkt): # 어느방향인지 파악 src->dst 일때 True
+            self.fwd.add(pkt) # dst->src일 때 False
         else:
             self.rev.add(pkt)
 

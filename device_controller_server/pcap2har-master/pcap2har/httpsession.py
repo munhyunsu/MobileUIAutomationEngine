@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 '''
 Objects for parsing a list of HTTPFlows into data suitable for writing to a
 HAR file.
@@ -41,18 +42,20 @@ class Entry(object):
         else:
             self.startedDateTime = datetime.utcfromtimestamp(request.ts_connect)
         # calculate other timings
-        self.time_blocked = -1
-        self.time_dnsing = -1
-        self.time_connecting = (
+        self.time_blocked = 0
+        self.time_dnsing = 0
+        self.time_connecting = ( # SYN패킷이 날라온 이후 request가 발생하기 전까지 시간
             ms_from_dpkt_time_diff(request.ts_start, request.ts_connect))
-        self.time_sending = (
+        print ('request.ts_start = ', str(request.ts_start) ,' request.ts_connect : ' , request.ts_connect)
+        self.time_sending = ( # request가 날아가는 시간
             ms_from_dpkt_time_diff(request.ts_end, request.ts_start))
         if response is not None:
-            self.time_waiting = (
+            self.time_waiting = ( # 요청 후 응답오기까지 기다리는 시간
                 ms_from_dpkt_time_diff(response.ts_start, request.ts_end))
-            self.time_receiving = (
+            self.time_receiving = ( # 데이터를 받는 시간 (응답 끝 - 응답 시작)
                 ms_from_dpkt_time_diff(response.ts_end, response.ts_start))
-            endedDateTime = datetime.utcfromtimestamp(response.ts_end)
+            self.endedDateTime = datetime.utcfromtimestamp(response.ts_end)
+            # totla_time : SYN패킷이 온시간부터 connection이 종료되기까지의 시간
             self.total_time = ms_from_dpkt_time_diff(response.ts_end, request.ts_connect)
         else:
             # this can happen if the request never gets a response
@@ -74,15 +77,18 @@ class Entry(object):
                 'connect': self.time_connecting,
                 'send': self.time_sending,
                 'wait': self.time_waiting,
-                'receive': self.time_receiving
+                'receive': self.time_receiving,
+                'total' : self.total_time
             },
-            'cache': {},
+            'cache': {},#cache비워놨네!!
         }
         if self.startedDateTime:
             # Z means time is in UTC
-            d['startedDateTime'] = self.startedDateTime.isoformat() + 'Z'
+            d['startedDateTime'] = self.startedDateTime.isoformat()+'Z'
         if self.pageref:
             d['pageref'] = self.pageref
+        if self.endedDateTime:
+            d['endedDateTime'] = self.endedDateTime.isoformat()+'Z'
         return d
 
     def add_dns(self, dns_query):
@@ -152,7 +158,14 @@ class HttpSession(object):
             except dpkt.dpkt.Error as error:
                 logging.warning(error)
         # combine the messages into a list
+        # flow는 (request, response) piar단위로 존재
         pairs = reduce(lambda p, f: p+f.pairs, self.flows, [])
+
+        for current in pairs:
+            print current.request.fullurl
+            print current.response
+            print ''
+
         # set-up
         self.user_agents = UserAgentTracker()
         if settings.process_pages:

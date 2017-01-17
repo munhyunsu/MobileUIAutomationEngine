@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 import logging
 
 class Message(object):
@@ -32,8 +33,8 @@ class Message(object):
         self.seq_start = tcpdir.byte_to_seq(pointer)
         self.seq_end = tcpdir.byte_to_seq(pointer + self.data_consumed) # past-the-end
         # calculate arrival_times
-        self.ts_start = tcpdir.seq_final_arrival(self.seq_start)
-        self.ts_end = tcpdir.seq_final_arrival(self.seq_end - 1)
+        self.ts_start = tcpdir.seq_final_arrival(self.seq_start) # 시퀸스가 처음시작한 시간
+        self.ts_end = tcpdir.seq_final_arrival(self.seq_end - 1) # 마지막 시퀸스 시간
         if self.ts_start is None or self.ts_end is None:
             logging.warn('Got an HTTP message with unknown start or end time.')
         # get raw body

@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 '''
 Various small, useful functions which have no other home.
 '''
@@ -109,17 +110,17 @@ class ModifiedReader(object):
         else:
           self.fd = None
 
-        self.__f = fileobj
-        buf = self.__f.read(dpkt.pcap.FileHdr.__hdr_len__)
-        self.__fh = dpkt.pcap.FileHdr(buf)
-        self.__ph = dpkt.pcap.PktHdr
-        if self.__fh.magic == dpkt.pcap.PMUDPCT_MAGIC:
+        self.__f = fileobj # __fd 에 패킷정보 저장
+        buf = self.__f.read(dpkt.pcap.FileHdr.__hdr_len__) #buf에 pcap파일의 헤더의 _len__ 저장
+        self.__fh = dpkt.pcap.FileHdr(buf) # 버퍼에서 파일헤더 가져오기
+        self.__ph = dpkt.pcap.PktHdr # pcap헤더 가져오기
+        if self.__fh.magic == dpkt.pcap.PMUDPCT_MAGIC: # 파일헤더의 magic이 PMUDPCT_MAGIC타입인지 확인
             self.__fh = dpkt.pcap.LEFileHdr(buf)
             self.__ph = dpkt.pcap.LEPktHdr
-        elif self.__fh.magic != dpkt.pcap.TCPDUMP_MAGIC:
-            raise ValueError, 'invalid tcpdump header'
+        elif self.__fh.magic != dpkt.pcap.TCPDUMP_MAGIC: # 일반적인 TCPDUMP타입인지 확인
+            raise ValueError, 'invalid tcpdump header' # 아니라면 비정상 TCPDUMP로 인식
         self.snaplen = self.__fh.snaplen
-        self.dloff = dpkt.pcap.dltoff[self.__fh.linktype]
+        self.dloff = dpkt.pcap.dltoff[self.__fh.linktype] #dlooff 는 파일헤더의 링크타입
         self.filter = ''
 
     def fileno(self):

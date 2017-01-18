@@ -35,6 +35,7 @@ class Message(object):
         # calculate arrival_times
         self.ts_start = tcpdir.seq_final_arrival(self.seq_start) # 시퀸스가 처음시작한 시간
         self.ts_end = tcpdir.seq_final_arrival(self.seq_end - 1) # 마지막 시퀸스 시간
+        print('ts_start : ',self.ts_start, ' ts_end : ', self.ts_end)
         if self.ts_start is None or self.ts_end is None:
             logging.warn('Got an HTTP message with unknown start or end time.')
         # get raw body

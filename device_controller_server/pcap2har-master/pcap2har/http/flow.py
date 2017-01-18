@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 import logging
 import dpkt
 
@@ -69,7 +70,7 @@ class Flow(object):
                 logging.warning('Request is missing.')
                 continue
             if not connected and tcpflow.handshake:
-                req.ts_connect = tcpflow.handshake[0].ts
+                req.ts_connect = tcpflow.handshake[0].ts # SYN패킷 시간
                 connected = True
             else:
                 req.ts_connect = req.ts_start

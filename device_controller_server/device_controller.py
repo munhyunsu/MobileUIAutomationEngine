@@ -84,14 +84,14 @@ class DeviceController:
             print('pull_pcap error')
             self.uninstall_app(pkg_name)
             raise e
-
+        """
         try:
             self.pcap_2_har(pkg_name)
         except Exception as e:
             print('pcap_2_har error')
             self.uninstall_app(pkg_name)
             raise e
-
+        """
         try:
             self.uninstall_app(pkg_name)
         except Exception as e:
@@ -151,6 +151,7 @@ class DeviceController:
         except Exception as e:
             raise e
 
+        time.sleep(2)
 
         try:
            command = adb_location + "adb shell rm " + pcap_save_directory + mp4_name
@@ -176,20 +177,23 @@ class DeviceController:
     def run_app(self, pkg_name):
         mp4_name = pkg_name + '.mp4'
         try:
-            command = adb_location + "adb shell screenrecord " + pcap_save_directory + mp4_name
+            command = adb_location + "adb shell screenrecord --time-limit 60 " + pcap_save_directory + mp4_name
+            print(command)
             proc_record = subprocess.Popen(command, shell=True)
         except Exception as e:
             raise e
     
         try:
-            command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 --throttle 5000 -v 20"
+            command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 --throttle 5000 -v 24"
             proc_monkey = subprocess.check_call(command, shell=True)
         except Exception as e:
             raise e
 
         time.sleep(1)
         try:
-            proc_record.kill()
+            #proc_record.kill()
+            #print('kill')
+            time.sleep(2)
         except Exception as e:
             raise e
 

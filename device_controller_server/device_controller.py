@@ -154,10 +154,10 @@ class DeviceController:
         time.sleep(2)
 
         try:
-           command = adb_location + "adb shell rm " + pcap_save_directory + mp4_name
+           command = adb_location + "adb shell rm " + pcap_save_directory + '*.mp4'
            subprocess.check_call(command, shell=True)
 
-           command = adb_location + "adb shell rm " + pcap_save_directory + pcap_name
+           command = adb_location + "adb shell rm " + pcap_save_directory + '*.pcap'
            subprocess.check_call(command, shell=True)
         except Exception as e:
             raise e

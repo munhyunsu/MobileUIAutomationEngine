@@ -11,6 +11,32 @@ class DeviceController:
     def __init__(self):
         self.init_config()
 
+    def reboot(self):
+        print('rebooting~')
+        command = adb_location + 'adb shell reboot'
+        try:
+            proc_reboot = subprocess.Popen(command, shell=True)
+            time.sleep(10)
+        except Exception as e:
+            raise e
+       
+        command = adb_location + 'adb devices'
+        while True:
+            try:
+                proc_check_on = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+                output = str(proc_check_on.stdout.read())
+                devices = output.split("\\n")
+                if len(devices) == 4:
+                    break
+                else:
+                    time.sleep(10)
+            except Exception as e:
+                time.sleep(10)
+                print(e)
+                continue
+
+        return True
+
     def init_config(self):
         try:
             config = configparser.ConfigParser()

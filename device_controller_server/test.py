@@ -15,6 +15,7 @@ def main():
 
     apk_directory = config.get('device_controller','apk_directory')
 
+    
     apk_list = list_apk(apk_directory)
 
     controller = DeviceController()
@@ -24,7 +25,8 @@ def main():
             controller.run_test(apk)
         except Exception as e:
             print(e)
-
+            controller.reboot()
+    
 
 if __name__ == '__main__':
     main()

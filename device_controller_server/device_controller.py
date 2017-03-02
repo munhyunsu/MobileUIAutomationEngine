@@ -27,6 +27,7 @@ class DeviceController:
                 output = str(proc_check_on.stdout.read())
                 devices = output.split("\\n")
                 if len(devices) == 4:
+                    time.sleep(10)
                     break
                 else:
                     time.sleep(10)
@@ -63,6 +64,12 @@ class DeviceController:
             raise e
 
     def run_test(self, pkg_name):
+        """
+        APK파일 이름을 받아서 테스트 진행
+        설치 -> 실행 -> Random Test -> 종료 및 삭제 -> pcap,mp4 파일 추출
+        [args]
+        pkg_name : 패키지이름(APK파일 이름)
+        """
         pcap_name = pkg_name + '.pcap'
     
         try:

@@ -233,9 +233,8 @@ class DeviceController:
         """
         mp4_name = pkg_name + '.mp4'
         try:
-            command = adb_location + "adb shell screenrecord " + pcap_save_directory + mp4_name
             # 랜덤테스트 진행시
-            # command = adb_location + "adb shell screenrecord --time-limit 30 " + pcap_save_directory + mp4_name
+            command = adb_location + "adb shell screenrecord --time-limit 30 " + pcap_save_directory + mp4_name
             proc_record = subprocess.Popen(command, shell=True)
         except Exception as e:
             raise e
@@ -251,7 +250,7 @@ class DeviceController:
 
         
         try:
-            time.sleep(20)
+            time.sleep(60)
             proc_record.kill()
             # print('kill')
             time.sleep(2)

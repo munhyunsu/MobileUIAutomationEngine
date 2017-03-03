@@ -1,97 +1,51 @@
-#-*- coding: utf-8 -*-
-import socket
-import deviceController
-import sys
-import ConfigParser
-import time
-reload(sys)
-sys.setdefaultencoding('utf-8')
+from device_controller import DeviceController
+import configparser
+import os
+import logging
+import logging.config
 
+def list_apk(path):
+    result = []
+    for f in os.listdir(path):
+        if f.endswith('.apk'):
+            result.append(f.split('.apk')[0])
+    return result
 
-config = ConfigParser.ConfigParser()
-config.read('../setting.ini')
-
-
-har_path = config.get('main','har_path')
-pcap_path = config.get('main','pcap_path')
-mp4_path = config.get('main','mp4_path')
-HOST = config.get('main','HOST')
-PORT = config.get('main','PORT')
-
-
-
-s = socket.socket()
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-print('HOST : '+HOST+' PORT : '+PORT)
-s.bind((HOST,int(PORT)))
-s.listen(1)
-
-while True:
+def main():
+    logging.config.fileConfig('logging.conf')
+    logger = logging.getLogger('device_controller')
 
     try:
-        conn, addr = s.accept()
-        print ('address : ', addr)
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+    except Exception as e:
+        logging.error(e + ' config.ini파일 읽는중에 에러발생')
+        raise e
 
-        received_data = conn.recv(1024)
-        if not received_data:
-            break
-        elif received_data == 'runTest':  # first parameter is runTest (run the testing)
-            print ('====== run Test ======')
-            conn.sendall('ack')
+    try:
+        apk_directory = config.get('device_controller','apk_directory')
+    except Exception as e:
+        logging.error(e + ' apk_directory 읽는중 에러 발생')
+        raise e
 
-            pkg_name = conn.recv(1024)  # app_info[0] : apk name , app_info[1] : activity name
-            if not pkg_name:
-                break
-            print ('pkg name : ', pkg_name)
-            conn.sendall('ack')
+    try:
+        apk_list = list_apk(apk_directory)
+    except Exception as e:
+        logging.error(e + ' apk_list 가지고 오는 중 에러 발생')
+        raise e
 
-            apk_name = conn.recv(1024)
-            if not apk_name:
-                break;
-            print ('apk name : ', apk_name)
-            # Run test and convert pcap to har file 
-            deviceController.runTest(pkg_name, apk_name)
+    controller = DeviceController()
 
-            print ('read har file and send to web server')
-            f = open(har_path, 'rb')
-            data = f.read(1024)
-            while (data):
-                conn.send(data)
-                data = f.read(1024)
-            conn.sendall('finished')
-            f.close()
-            print('finish send har file')
+    # 디렉토리 안에 들어있는 모든  APK파일에 대해서 진행
+    for apk in apk_list:
+        try:
+            # APK파일 하나씩 테스트 진행
+            controller.run_test(apk)
+        except Exception as e:
+            # 발생하는 Exception 종류가 뭐가있나?
+            logging.error('run_test error : ' + e)
+            controller.reboot()
+    
 
-            time.sleep(2)
-
-            
-            print('read pcap file and send to web server')
-            f = open(pcap_path, 'rb')
-            data = f.read(1024)
-            while (data):
-                conn.send(data)
-                data = f.read(1024)
-            conn.sendall('finished')
-            f.close()
-            print('finish send pcap file')
-
-            time.sleep(2)
-
-            print('read mp4 file and send to web server')
-            f = open(mp4_path, 'rb')
-            data = f.read(1024)
-            while (data):
-                conn.send(data)
-                data = f.read(1024)
-            conn.sendall('finished')
-            f.close()
-            print('finish send mp4 file')
-            
-
-        conn.close()
-
-        print 'conn close'
-
-    except:
-        conn.close()
+if __name__ == '__main__':
+    main()

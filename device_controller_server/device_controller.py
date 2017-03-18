@@ -241,9 +241,9 @@ class DeviceController:
     
         try:
             # 앱 첫화면에 대해서만 진행 할 경우
-            command = adb_location + 'adb shell monkey -p ' + pkg_name + ' 1'
+            #command = adb_location + 'adb shell monkey -p ' + pkg_name + ' 1'
             # 랜덤테스트
-            # command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 --throttle 5000 -v 24"
+            command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 --throttle 5000 -v 24"
             proc_monkey = subprocess.check_call(command, shell=True)
         except Exception as e:
             raise e

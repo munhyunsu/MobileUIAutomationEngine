@@ -43,7 +43,7 @@ def main():
             controller.run_test(apk)
         except Exception as e:
             # 발생하는 Exception 종류가 뭐가있나?
-            logging.error('run_test error : ' + e)
+            logging.error('run_test error : ')
             controller.reboot()
     
 

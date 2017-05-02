@@ -24,7 +24,7 @@ class DeviceController:
             proc_reboot = subprocess.Popen(command, shell=True)
             time.sleep(10)
         except Exception as e:
-            logging.error(e + ' adb shell reboot error')
+            logging.error(' adb shell reboot error')
             raise e
        
         command = adb_location + 'adb devices'
@@ -102,7 +102,7 @@ class DeviceController:
         try:
             self.run_app(pkg_name)
         except Exception as e:
-            logging.error('run_app error : ' + e)
+            logging.error('run_app error : ')
             self.uninstall_app(pkg_name)
             return False
         
@@ -110,14 +110,14 @@ class DeviceController:
         try:
             self.close_app(pkg_name)
         except Exception as e:
-            logging.error('close_app error : ' + e)
+            logging.error('close_app error : ')
             self.uninstall_app(pkg_name)
             return False
 
         try:
             proc_tcpdump.kill()
         except Exception as e:
-            logging.error('proc_tcpdump.kill error : ' + e)
+            logging.error('proc_tcpdump.kill error : ')
             self.uninstall_app(pkg_name)
             return False
     
@@ -126,7 +126,7 @@ class DeviceController:
         try:
             self.pull_pcap(pkg_name)
         except Exception as e:
-            logging.error('pull_pcap error : ' + e)
+            logging.error('pull_pcap error : ')
             self.uninstall_app(pkg_name)
             return False
 
@@ -143,7 +143,7 @@ class DeviceController:
         try:
             self.uninstall_app(pkg_name)
         except Exception as e:
-            logging.error('uninstall_app error : ' + e)
+            logging.error('uninstall_app error : ')
             return False
 
         logging.info(pkg_name + ' testing was finished')

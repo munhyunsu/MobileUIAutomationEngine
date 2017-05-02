@@ -234,7 +234,7 @@ class DeviceController:
         mp4_name = pkg_name + '.mp4'
         try:
             # 랜덤테스트 진행시
-            command = adb_location + "adb shell screenrecord --time-limit 30 " + pcap_save_directory + mp4_name
+            command = adb_location + "adb shell screenrecord --time-limit 60 " + pcap_save_directory + mp4_name
             proc_record = subprocess.Popen(command, shell=True)
         except Exception as e:
             raise e
@@ -243,7 +243,8 @@ class DeviceController:
             # 앱 첫화면에 대해서만 진행 할 경우
             #command = adb_location + 'adb shell monkey -p ' + pkg_name + ' 1'
             # 랜덤테스트
-            command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 --throttle 5000 -v 24"
+            command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-nav 0 --pct-touch\
+            50 --pct-trackball 50 --throttle 5000 -v 200"
             proc_monkey = subprocess.check_call(command, shell=True)
         except Exception as e:
             raise e

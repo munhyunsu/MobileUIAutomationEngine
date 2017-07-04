@@ -90,8 +90,8 @@ class DeviceController:
         except Exception as e:
             raise e
 
+        # tcpdump 실행(Popen으로 Background로 실행)
         command = adb_location + "adb shell su -c " + tcpdump_directory + "tcpdump -i wlan0 -w " + pcap_save_directory + pcap_name + " -s 0"
-
         try:
             proc_tcpdump = subprocess.Popen(command, shell=True)
         except Exception as e:

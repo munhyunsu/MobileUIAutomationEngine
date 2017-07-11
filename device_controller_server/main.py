@@ -4,7 +4,11 @@ import os
 import logging
 import logging.config
 
+
 def list_apk(path):
+    """
+        path를 입력받아 해당 경로에 존재하는 apk파일들을 리스트형태로 가지고온다.
+    """
     result = []
     for f in os.listdir(path):
         if f.endswith('.apk'):
@@ -44,8 +48,6 @@ def main():
         except Exception as e:
             raise e
             # 발생하는 Exception 종류가 뭐가있나?
-            logging.error('run_test error : ')
-    
 
 if __name__ == '__main__':
     main()

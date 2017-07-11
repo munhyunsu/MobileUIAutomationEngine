@@ -27,11 +27,11 @@ class DeviceController:
         except Exception as e:
             logging.error(' adb shell reboot error')
             raise e
-       
+
         command = adb_location + 'adb devices'
         while True:
             try:
-                proc_check_on = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+                proc_check_on = subprocess.Popen(command, shell=True)
                 output = str(proc_check_on.stdout.read())
                 devices = output.split("\\n")
                 # 연결된 단말기가 1개 있으면 len이 4
@@ -54,13 +54,10 @@ class DeviceController:
         try:
             config = configparser.ConfigParser()
             config.read("config.ini")
-        except Exception as e:
-            raise e
 
-        global adb_location, apk_directory, tcpdump_directory,\
-            pcap_save_directory, save_directory
+            global adb_location, apk_directory, tcpdump_directory,\
+                pcap_save_directory, save_directory
 
-        try:
             adb_location = config.get("device_controller","adb_location")
             apk_directory = config.get("device_controller","apk_directory")
             tcpdump_directory = config.get("device_controller", "tcpdump_directory")
@@ -82,7 +79,7 @@ class DeviceController:
         [args]
         pkg_name : 패키지이름(APK파일 이름)
         """
-        
+
         # 데이터를 수집할 디렉토리가 없다면 미리 생성
         # 이미 디렉토리가 존재한다면 pass
         try:
@@ -95,14 +92,14 @@ class DeviceController:
             raise e
 
         try:
-            pcap_name = pkg_name + '.pcap' 
+            pcap_name = pkg_name + '.pcap'
             apk_name = pkg_name + '.apk'
             mp4_name = pkg_name + '.mp4'
 
             # apk파일 설치
             command = adb_location + "adb install " + apk_directory + apk_name
             subprocess.check_call(command, shell=True)
-    
+
             # tcpdump 실행(Popen으로 Background로 실행)
             command = adb_location + "adb shell su -c " + tcpdump_directory + "tcpdump -i wlan0 -w " +\
                 pcap_save_directory + pcap_name + " -s 0"
@@ -112,20 +109,22 @@ class DeviceController:
             initial_time = datetime.datetime.now()
 
             # 화면 녹화(Popen으로 Background로 실행) 
+
             command = adb_location + "adb shell screenrecord " + pcap_save_directory + mp4_name
             proc_record = subprocess.Popen(command, shell=True)
-    
+
             # monkey로 이벤트를 발생시키면서 uiautomator로 관찰
             event_index = 0
-            prev_count = -1
             count = 0
+            session = []
 
             # 총 5개의 이벤트 발생
             num_of_event = 5
             while(event_index < num_of_event):
+                prev_count = -1
                 command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 3"
                 subprocess.check_call(command, shell=True)
-                time.sleep(2)
+                time.sleep(3)
                 while(True):
                     # uiautomator를 batch job으로 무한반복시키면서 node 개수 파악 
                     snap_time = datetime.datetime.now() - initial_time
@@ -135,7 +134,7 @@ class DeviceController:
 
                     command = adb_location + "adb pull /sdcard/xml/" + str(int(snap_time.total_seconds())) + ".xml " +\
                         save_directory + 'xml/' + pkg_name + '/'
-                    subprocess.check_call(command, shell=True)
+                    subprocess.check_call(command, shell=True, stdout=None)
 
                     # xml파일 파싱하여 node 개수 파악
                     tree = parse(save_directory + 'xml/' + pkg_name + '/' + str(int(snap_time.total_seconds())) + ".xml")
@@ -145,6 +144,7 @@ class DeviceController:
                     node_count = 0
                     for item in iterator:
                         node_count = node_count + 1
+                    print('node count : ' + str(node_count))
 
                     # 이전 xml파일과 노드개수가 불일치하면 아직 렌더링중이므로 노드개수 갱신
                     if(prev_count != node_count):
@@ -154,19 +154,35 @@ class DeviceController:
                         count = count + 1
 
                     # 노드개수가 5개의 xml파일동안 동일하면 렌더링 완료
-                    if(count == 5):
+                    if(count == 3):
                         print('event detected')
+                        print('snap time : ' + str(int(snap_time.total_seconds())) + '\n\n')
+                        session.append(str(int(snap_time.total_seconds())))
                         break
+
 
                 event_index = event_index + 1
 
-                
-            # 앱 종료 및 화면녹화 종료
+
+            file_session = open(save_directory + "/speed.csv", "a")
+            file_session.write(pkg_name + "," + ','.join(str(a) for a in session) + "\n")
+            file_session.close()
+
+            # 화면녹화 프로세스 종료
             if(proc_record.poll() is None):
                 proc_record.kill()
-            if(proc_tcpdump.poll() is None):
-                proc_tcpdump.kill()
 
+            # tcpdump 프로세스 kill (관리자 권한으로 실행시켜서 subprocess로 안죽음)
+            # 즉, 단말기 내부에서 kill명령어로 죽여야함
+            command = adb_location + "adb shell ps |grep tcpdump"
+            proc_kill = subprocess.check_output(command, shell=True)
+            proc_kill = proc_kill.decode('utf-8')  # str형태로 캐스팅
+            proc_kill = list(filter(None, proc_kill.split(' '))) # 공백문자 제거하여 리스트형태로 생성
+            tcpdump_id = proc_kill[1]
+            command = adb_location + "adb shell su -c kill -9 " +  tcpdump_id
+            subprocess.check_call(command, shell=True)
+
+            # 실행되어있는 앱 종료
             command = adb_location + "adb shell am force-stop " + pkg_name
             subprocess.check_call(command, shell=True)
 

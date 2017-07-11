@@ -4,6 +4,7 @@ import configparser
 import os
 import datetime
 import logging
+from xml.etree.ElementTree import parse
 
 class DeviceController:
 
@@ -26,11 +27,11 @@ class DeviceController:
         except Exception as e:
             logging.error(' adb shell reboot error')
             raise e
-       
+
         command = adb_location + 'adb devices'
         while True:
             try:
-                proc_check_on = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+                proc_check_on = subprocess.Popen(command, shell=True)
                 output = str(proc_check_on.stdout.read())
                 devices = output.split("\\n")
                 # 연결된 단말기가 1개 있으면 len이 4
@@ -53,17 +54,13 @@ class DeviceController:
         try:
             config = configparser.ConfigParser()
             config.read("config.ini")
-        except Exception as e:
-            raise e
 
-        global adb_location, apk_directory, tcpdump_directory, pcap_2_har_directory,\
-            pcap_save_directory, save_directory
+            global adb_location, apk_directory, tcpdump_directory,\
+                pcap_save_directory, save_directory
 
-        try:
             adb_location = config.get("device_controller","adb_location")
             apk_directory = config.get("device_controller","apk_directory")
             tcpdump_directory = config.get("device_controller", "tcpdump_directory")
-            pcap_2_har_directory = config.get("device_controller","pcap_2_har_directory")
             pcap_save_directory = config.get("device_controller","pcap_save_directory")
             save_directory = config.get("device_controller", "save_directory")
             save_directory = save_directory + datetime.datetime.now().strftime('%y%m%d') + '/'
@@ -82,199 +79,136 @@ class DeviceController:
         [args]
         pkg_name : 패키지이름(APK파일 이름)
         """
-        pcap_name = pkg_name + '.pcap'
-    
 
-        try:
-            self.install_apk(pkg_name)
-        except Exception as e:
-            raise e
-
-        # tcpdump 실행(Popen으로 Background로 실행)
-        command = adb_location + "adb shell su -c " + tcpdump_directory + "tcpdump -i wlan0 -w " + pcap_save_directory + pcap_name + " -s 0"
-        try:
-            proc_tcpdump = subprocess.Popen(command, shell=True)
-        except Exception as e:
-            logging.error('proc_tcpdump error. uninstall ' + pkg_name + ' and skip.')
-            self.uninstall_app(pkg_name)
-            return False
-
-        try:
-            self.run_app(pkg_name)
-        except Exception as e:
-            logging.error('run_app error : ')
-            self.uninstall_app(pkg_name)
-            return False
-        
-
-        try:
-            self.close_app(pkg_name)
-        except Exception as e:
-            logging.error('close_app error : ')
-            self.uninstall_app(pkg_name)
-            return False
-
-        try:
-            proc_tcpdump.kill()
-        except Exception as e:
-            logging.error('proc_tcpdump.kill error : ')
-            self.uninstall_app(pkg_name)
-            return False
-    
-        time.sleep(3)
-
-        try:
-            self.pull_pcap(pkg_name)
-        except Exception as e:
-            logging.error('pull_pcap error : ')
-            self.uninstall_app(pkg_name)
-            return False
-
-        #har파일은 아직
-        """
-        try:
-            self.pcap_2_har(pkg_name)
-        except Exception as e:
-            print('pcap_2_har error')
-            self.uninstall_app(pkg_name)
-            raise e
-        """
-
-        try:
-            self.uninstall_app(pkg_name)
-        except Exception as e:
-            logging.error('uninstall_app error : ')
-            return False
-
-        logging.info(pkg_name + ' testing was finished')
-        return True
-
-
-    def pcap_2_har(self,pkg_name):
-        pcap_name = pkg_name + '.pcap'
-        har_name = pkg_name + '.har'
-
-        try:
-            os.makedirs(save_directory + 'har')
-        except FileExistsError as e:
-            pass
-        except Exception as e:
-            raise e
-
-        command = pcap_2_har_directory + 'main.py ' + save_directory + 'pcap/' + pcap_name + ' ' + save_directory + 'har/' + har_name
-        try:
-            subprocess.check_call(command, shell=True)
-        except Exception as e:
-            raise e
-
-
-    def pull_pcap(self,pkg_name):
-        pcap_name = pkg_name + '.pcap'
-        mp4_name = pkg_name + '.mp4'
-
+        # 데이터를 수집할 디렉토리가 없다면 미리 생성
+        # 이미 디렉토리가 존재한다면 pass
         try:
             os.makedirs(save_directory + 'pcap')
-        except FileExistsError as e:
-            pass
-        except Exception as e:
-            raise e
-
-        try:
             os.makedirs(save_directory + 'record')
+            os.makedirs(save_directory + 'xml/' + pkg_name)
         except FileExistsError as e:
             pass
         except Exception as e:
             raise e
 
-        command = adb_location + "adb pull " + pcap_save_directory + pcap_name + ' ' +\
-            save_directory + 'pcap/'
-
         try:
+            pcap_name = pkg_name + '.pcap'
+            apk_name = pkg_name + '.apk'
+            mp4_name = pkg_name + '.mp4'
+
+            # apk파일 설치
+            command = adb_location + "adb install " + apk_directory + apk_name
             subprocess.check_call(command, shell=True)
-        except Exception as e:
-            raise e
 
-        try:
+            # tcpdump 실행(Popen으로 Background로 실행)
+            command = adb_location + "adb shell su -c " + tcpdump_directory + "tcpdump -i wlan0 -w " +\
+                pcap_save_directory + pcap_name + " -s 0"
+            proc_tcpdump = subprocess.Popen(command, shell=True)
+
+            # 화면 녹화 시작시간 파악
+            initial_time = datetime.datetime.now()
+
+            # 화면 녹화(Popen으로 Background로 실행) 
+
+            command = adb_location + "adb shell screenrecord " + pcap_save_directory + mp4_name
+            proc_record = subprocess.Popen(command, shell=True)
+
+            # monkey로 이벤트를 발생시키면서 uiautomator로 관찰
+            event_index = 0
+            count = 0
+            session = []
+
+            # 총 5개의 이벤트 발생
+            num_of_event = 5
+            while(event_index < num_of_event):
+                prev_count = -1
+                command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 3"
+                subprocess.check_call(command, shell=True)
+                time.sleep(3)
+                while(True):
+                    # uiautomator를 batch job으로 무한반복시키면서 node 개수 파악 
+                    snap_time = datetime.datetime.now() - initial_time
+                    command = adb_location + "adb shell su -c uiautomator dump /sdcard/xml/" + str(int(snap_time.total_seconds())) +\
+                        ".xml"
+                    subprocess.check_call(command, shell=True)
+
+                    command = adb_location + "adb pull /sdcard/xml/" + str(int(snap_time.total_seconds())) + ".xml " +\
+                        save_directory + 'xml/' + pkg_name + '/'
+                    subprocess.check_call(command, shell=True, stdout=None)
+
+                    # xml파일 파싱하여 node 개수 파악
+                    tree = parse(save_directory + 'xml/' + pkg_name + '/' + str(int(snap_time.total_seconds())) + ".xml")
+                    root = tree.getroot()
+                    iterator =  root.iter()
+
+                    node_count = 0
+                    for item in iterator:
+                        node_count = node_count + 1
+                    print('node count : ' + str(node_count))
+
+                    # 이전 xml파일과 노드개수가 불일치하면 아직 렌더링중이므로 노드개수 갱신
+                    if(prev_count != node_count):
+                        prev_count = node_count
+                        count = 0
+                    else:
+                        count = count + 1
+
+                    # 노드개수가 5개의 xml파일동안 동일하면 렌더링 완료
+                    if(count == 3):
+                        print('event detected')
+                        print('snap time : ' + str(int(snap_time.total_seconds())) + '\n\n')
+                        session.append(str(int(snap_time.total_seconds())))
+                        break
+
+
+                event_index = event_index + 1
+
+
+            file_session = open(save_directory + "/speed.csv", "a")
+            file_session.write(pkg_name + "," + ','.join(str(a) for a in session) + "\n")
+            file_session.close()
+
+            # 화면녹화 프로세스 종료
+            if(proc_record.poll() is None):
+                proc_record.kill()
+
+            # tcpdump 프로세스 kill (관리자 권한으로 실행시켜서 subprocess로 안죽음)
+            # 즉, 단말기 내부에서 kill명령어로 죽여야함
+            command = adb_location + "adb shell ps |grep tcpdump"
+            proc_kill = subprocess.check_output(command, shell=True)
+            proc_kill = proc_kill.decode('utf-8')  # str형태로 캐스팅
+            proc_kill = list(filter(None, proc_kill.split(' '))) # 공백문자 제거하여 리스트형태로 생성
+            tcpdump_id = proc_kill[1]
+            command = adb_location + "adb shell su -c kill -9 " +  tcpdump_id
+            subprocess.check_call(command, shell=True)
+
+            # 실행되어있는 앱 종료
+            command = adb_location + "adb shell am force-stop " + pkg_name
+            subprocess.check_call(command, shell=True)
+
+            # pcap파일 pull
+            command = adb_location + "adb pull " + pcap_save_directory + pcap_name + ' ' +\
+                save_directory + 'pcap/'
+            subprocess.check_call(command, shell=True)
+
+            # mp4파일 pull
             command = adb_location + "adb pull " + pcap_save_directory + mp4_name + ' ' +\
                 save_directory + 'record/'
             subprocess.check_call(command, shell=True)
-        except Exception as e:
-            raise e
-
-        time.sleep(2)
-
-        try:
-           command = adb_location + "adb shell rm " + pcap_save_directory + '*.mp4'
-           subprocess.check_call(command, shell=True)
-
-           command = adb_location + "adb shell rm " + pcap_save_directory + '*.pcap'
-           subprocess.check_call(command, shell=True)
-        except Exception as e:
-            raise e
-
-    
-
-    def install_apk(self, pkg_name):
-        """
-        apk파일 이름을 인자로 받아 연결된 단말기에 설치한다.
-        """
-        apk_name = pkg_name + '.apk'
-        mp4_name = pkg_name + '.mp4'
- 
-        try:
-            command = adb_location + "adb install " + apk_directory + apk_name
-            data = subprocess.check_call(command, shell=True)
-        except Exception as e:
-            raise e
-
-    def run_app(self, pkg_name):
-        """
-        앱을 실행시키고 screenrecord도 같이 실행시켜서 영상녹화를 한다.
-        """
-        mp4_name = pkg_name + '.mp4'
-        try:
-            # 랜덤테스트 진행시
-            command = adb_location + "adb shell screenrecord --time-limit 60 " + pcap_save_directory + mp4_name
-            proc_record = subprocess.Popen(command, shell=True)
-        except Exception as e:
-            raise e
-    
-        try:
-            # 앱 첫화면에 대해서만 진행 할 경우
-            #command = adb_location + 'adb shell monkey -p ' + pkg_name + ' 1'
-            # 랜덤테스트
-            command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-nav 0 --pct-touch\
-            50 --pct-trackball 50 --throttle 5000 -v 200"
-            proc_monkey = subprocess.check_call(command, shell=True)
-        except Exception as e:
-            raise e
-
-        
-        try:
-            time.sleep(60)
-            proc_record.kill()
-            # print('kill')
-            time.sleep(2)
-        except Exception as e:
-            raise e
 
 
-    def uninstall_app(self, pkg_name):
-        """
-        인자로 받은 앱을 단말기에서 삭제한다.
-        """
-        try:
+            # 단말기 내부의 mp4파일 삭제
+            command = adb_location + "adb shell rm " + pcap_save_directory + '*.mp4'
+            subprocess.check_call(command, shell=True)
+
+            # 단말기 내부의 pcap파일 삭제
+            command = adb_location + "adb shell rm " + pcap_save_directory + '*.pcap'
+            subprocess.check_call(command, shell=True)
+
+            # 단말기의 앱 삭제
             command = adb_location + "adb uninstall " + pkg_name
             subprocess.check_call(command, shell=True)
-        except Exception as e:
-            raise e
+            logging.info(pkg_name + ' testing was finished')
 
-    def close_app(self, pkg_name): 
-        """
-        인자로 받은 패키지 이름의 앱을 단말기에서 정지시킨다.
-        """
-        try:
-            command = adb_location + "adb shell am force-stop " + pkg_name
-            subprocess.check_call(command, shell=True)
         except Exception as e:
             raise e

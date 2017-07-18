@@ -85,11 +85,17 @@ class DeviceController:
         try:
             os.makedirs(save_directory + 'pcap')
             os.makedirs(save_directory + 'record')
-            os.makedirs(save_directory + 'xml/' + pkg_name)
+            
         except FileExistsError as e:
+            print(e)
             pass
         except Exception as e:
             raise e
+        try:
+            os.makedirs(save_directory + 'xml/' + pkg_name)
+        except Exception as e:
+            print(e)
+            pass
 
         try:
             pcap_name = pkg_name + '.pcap'

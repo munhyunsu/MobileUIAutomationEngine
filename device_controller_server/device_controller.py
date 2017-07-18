@@ -124,7 +124,7 @@ class DeviceController:
                 prev_count = -1
                 command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 3"
                 subprocess.check_call(command, shell=True)
-                time.sleep(3)
+                time.sleep(5)
                 while(True):
                     # uiautomator를 batch job으로 무한반복시키면서 node 개수 파악 
                     snap_time = datetime.datetime.now() - initial_time
@@ -132,9 +132,13 @@ class DeviceController:
                         ".xml"
                     subprocess.check_call(command, shell=True)
 
-                    command = adb_location + "adb pull /sdcard/xml/" + str(int(snap_time.total_seconds())) + ".xml " +\
-                        save_directory + 'xml/' + pkg_name + '/'
-                    subprocess.check_call(command, shell=True, stdout=None)
+                    # 서버에서 앱 실행전에 uiautomator가 동작하면 파일이 생성되지 않는 것 같기때문에 continue 
+                    try:
+                        command = adb_location + "adb pull /sdcard/xml/" + str(int(snap_time.total_seconds())) + ".xml " +\
+                            save_directory + 'xml/' + pkg_name + '/'
+                        subprocess.check_call(command, shell=True, stdout=None)
+                    except Exception as e:
+                        continue
 
                     # xml파일 파싱하여 node 개수 파악
                     tree = parse(save_directory + 'xml/' + pkg_name + '/' + str(int(snap_time.total_seconds())) + ".xml")
@@ -156,6 +160,7 @@ class DeviceController:
                     # 노드개수가 5개의 xml파일동안 동일하면 렌더링 완료
                     if(count == 3):
                         print('event detected')
+                        snap_time = datetime.datetime.now() - initial_time
                         print('snap time : ' + str(int(snap_time.total_seconds())) + '\n\n')
                         session.append(str(int(snap_time.total_seconds())))
                         break
@@ -171,6 +176,10 @@ class DeviceController:
             # 화면녹화 프로세스 종료
             if(proc_record.poll() is None):
                 proc_record.kill()
+
+            # 단말기 안에 xml 파일 전부 제거
+            command = adb_location + "adb shell rm /sdcard/xml/*"
+            subprocess.check_call(command, shell=True)
 
             # tcpdump 프로세스 kill (관리자 권한으로 실행시켜서 subprocess로 안죽음)
             # 즉, 단말기 내부에서 kill명령어로 죽여야함

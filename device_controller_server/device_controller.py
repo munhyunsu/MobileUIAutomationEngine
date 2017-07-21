@@ -4,6 +4,8 @@ import configparser
 import os
 import datetime
 import logging
+import random
+import re
 from xml.etree.ElementTree import parse
 
 class DeviceController:
@@ -85,11 +87,16 @@ class DeviceController:
         try:
             os.makedirs(save_directory + 'pcap')
             os.makedirs(save_directory + 'record')
-            os.makedirs(save_directory + 'xml/' + pkg_name)
         except FileExistsError as e:
+            print(e)
             pass
         except Exception as e:
             raise e
+        try:
+            os.makedirs(save_directory + 'xml/' + pkg_name)
+        except Exception as e:
+            print(e)
+            pass
 
         try:
             pcap_name = pkg_name + '.pcap'
@@ -105,45 +112,57 @@ class DeviceController:
                 pcap_save_directory + pcap_name + " -s 0"
             proc_tcpdump = subprocess.Popen(command, shell=True)
 
-            # 화면 녹화 시작시간 파악
-            initial_time = datetime.datetime.now()
-
             # 화면 녹화(Popen으로 Background로 실행) 
-
             command = adb_location + "adb shell screenrecord " + pcap_save_directory + mp4_name
             proc_record = subprocess.Popen(command, shell=True)
+
+            # 화면 녹화 시작시간 파악
+            initial_time = datetime.datetime.now()
 
             # monkey로 이벤트를 발생시키면서 uiautomator로 관찰
             event_index = 0
             count = 0
             session = []
 
+            # 첫 이벤트는 앱실행도 같이 시켜야 하기 때문에 monkey로 이벤트 발생
+            command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 3"
+            subprocess.check_call(command, shell=True)
+            time.sleep(5)
+
             # 총 5개의 이벤트 발생
             num_of_event = 5
+
             while(event_index < num_of_event):
                 prev_count = -1
-                command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 3"
-                subprocess.check_call(command, shell=True)
-                time.sleep(3)
+
                 while(True):
                     # uiautomator를 batch job으로 무한반복시키면서 node 개수 파악 
                     snap_time = datetime.datetime.now() - initial_time
-                    command = adb_location + "adb shell su -c uiautomator dump /sdcard/xml/" + str(int(snap_time.total_seconds())) +\
-                        ".xml"
+                    command = adb_location + "adb shell su -c uiautomator dump /sdcard/xml/" +\
+                        str(int(snap_time.total_seconds())) + ".xml"
                     subprocess.check_call(command, shell=True)
 
-                    command = adb_location + "adb pull /sdcard/xml/" + str(int(snap_time.total_seconds())) + ".xml " +\
-                        save_directory + 'xml/' + pkg_name + '/'
-                    subprocess.check_call(command, shell=True, stdout=None)
+                    # 서버에서 앱 실행전에 uiautomator가 동작하면 파일이 생성되지 않는 문제가 존재
+                    try:
+                        command = adb_location + "adb pull /sdcard/xml/" + str(int(snap_time.total_seconds())) + ".xml " +\
+                            save_directory + 'xml/' + pkg_name + '/'
+                        subprocess.check_call(command, shell=True, stdout=None)
+                    except Exception as e:
+                        continue
 
                     # xml파일 파싱하여 node 개수 파악
                     tree = parse(save_directory + 'xml/' + pkg_name + '/' + str(int(snap_time.total_seconds())) + ".xml")
                     root = tree.getroot()
                     iterator =  root.iter()
 
+                    # 현재화면에서 터치할 수 있는 객체 가져오는 리스트
+                    clickable_list = []
                     node_count = 0
                     for item in iterator:
                         node_count = node_count + 1
+
+                        if(item.get('clickable') == 'true'):
+                            clickable_list.append(item)
                     print('node count : ' + str(node_count))
 
                     # 이전 xml파일과 노드개수가 불일치하면 아직 렌더링중이므로 노드개수 갱신
@@ -156,8 +175,26 @@ class DeviceController:
                     # 노드개수가 5개의 xml파일동안 동일하면 렌더링 완료
                     if(count == 3):
                         print('event detected')
+                        snap_time = datetime.datetime.now() - initial_time
                         print('snap time : ' + str(int(snap_time.total_seconds())) + '\n\n')
                         session.append(str(int(snap_time.total_seconds())))
+
+                        # 터치할 수 있는 객체중 하나 랜덤으로 선택하여 해당 좌표로 입력이벤트 발생시킴
+                        # 터치할 수 있는 객체중에 레이아웃도 있는데 그때는 0,0이 나옴. 그것은 자동필터링
+                        # TODO: 화면 안에 터치할 수 잇는 버튼이 없을 가능성이 있나 ?
+                        while(True):
+                            bounds = random.choice(clickable_list).get('bounds')
+                            bounds = re.split('\[|\]|,',bounds)
+                            bounds = list(filter(None, bounds))
+                            x = int((int(bounds[0]) + int(bounds[2]))/2)
+                            y = int((int(bounds[1]) + int(bounds[3]))/2)
+
+                            if(x!=0 and y!=0):
+                                break
+                        if (event_index  != num_of_event):
+                            print('x : ' + str(x) + " y : " + str(y))
+                            command = adb_location + "adb shell input tap " + str(x) + " " + str(y)
+                            subprocess.check_call(command, shell=True, stdout=None)
                         break
 
 
@@ -171,6 +208,10 @@ class DeviceController:
             # 화면녹화 프로세스 종료
             if(proc_record.poll() is None):
                 proc_record.kill()
+
+            # 단말기 안에 xml 파일 전부 제거
+            command = adb_location + "adb shell rm /sdcard/xml/*"
+            subprocess.check_call(command, shell=True)
 
             # tcpdump 프로세스 kill (관리자 권한으로 실행시켜서 subprocess로 안죽음)
             # 즉, 단말기 내부에서 kill명령어로 죽여야함

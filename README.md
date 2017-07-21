@@ -15,13 +15,13 @@
 ![Architecture](Architecture.png)
 Mobile Uiautomation Engine 내부에는Input Event Generator, Traffic Capturing, Screen Recording, UIautomation dump  4가지 모듈이 존재합니다.
 > Input Event Generator
->> PC에 연결된 단말기에 APK파일을 설치, 실행, 입력이벤트 발생, 삭제 명령을 내려주는 컨트롤러역할을 합니다.
+    > PC에 연결된 단말기에 APK파일을 설치, 실행, 입력이벤트 발생, 삭제 명령을 내려주는 컨트롤러역할을 합니다.
 > Traffic Capturing
->> 테스트가 진행되는 동안 tcpdump를 사용하여 트래픽을 수집합니다. 앱시작과 동시에 시작하여 앱종료와 함께 종료됩니다.
+    > 테스트가 진행되는 동안 tcpdump를 사용하여 트래픽을 수집합니다. 앱시작과 동시에 시작하여 앱종료와 함께 종료됩니다.
 > Screen Recording
->> Traffic Capturing 모듈과 비슷하게 앱테스트 시작부터 종료까지 단말기 화면을 녹화합니다.
+    > Traffic Capturing 모듈과 비슷하게 앱테스트 시작부터 종료까지 단말기 화면을 녹화합니다.
 > Uiautomation dump
->> Input Event Generator를 통해 입력이벤트를 발생시킨 후 렌더링완료시점을 파악하기위해 UIautomator를 실행시켜 화면상의 노드개수를 파악해 줍니다.
+    > Input Event Generator를 통해 입력이벤트를 발생시킨 후 렌더링완료시점을 파악하기위해 UIautomator를 실행시켜 화면상의 노드개수를 파악해 줍니다.
 
 # Flow
 ![Flow](Flow.png)

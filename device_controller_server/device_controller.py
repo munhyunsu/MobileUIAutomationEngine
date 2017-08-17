@@ -182,18 +182,22 @@ class DeviceController:
                         # 터치할 수 있는 객체중 하나 랜덤으로 선택하여 해당 좌표로 입력이벤트 발생시킴
                         # 터치할 수 있는 객체중에 레이아웃도 있는데 그때는 0,0이 나옴. 그것은 자동필터링
                         # TODO: 화면 안에 터치할 수 잇는 버튼이 없을 가능성이 있나 ?
-                        while(True):
-                            bounds = random.choice(clickable_list).get('bounds')
-                            bounds = re.split('\[|\]|,',bounds)
-                            bounds = list(filter(None, bounds))
-                            x = int((int(bounds[0]) + int(bounds[2]))/2)
-                            y = int((int(bounds[1]) + int(bounds[3]))/2)
+                        if(len(clickable_list) !=0):
+                            while(True):
+                                bounds = random.choice(clickable_list).get('bounds')
+                                bounds = re.split('\[|\]|,',bounds)
+                                bounds = list(filter(None, bounds))
+                                x = int((int(bounds[0]) + int(bounds[2]))/2)
+                                y = int((int(bounds[1]) + int(bounds[3]))/2)
 
-                            if(x!=0 and y!=0):
-                                break
-                        if (event_index  != num_of_event):
-                            print('x : ' + str(x) + " y : " + str(y))
-                            command = adb_location + "adb shell input tap " + str(x) + " " + str(y)
+                                if(x!=0 and y!=0):
+                                    break
+                            if (event_index  != num_of_event):
+                                print('x : ' + str(x) + " y : " + str(y))
+                                command = adb_location + "adb shell input tap " + str(x) + " " + str(y)
+                                subprocess.check_call(command, shell=True, stdout=None)
+                        else:
+                            command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 3"
                             subprocess.check_call(command, shell=True, stdout=None)
                         break
 
@@ -207,7 +211,13 @@ class DeviceController:
 
             # 화면녹화 프로세스 종료
             if(proc_record.poll() is None):
-                proc_record.kill()
+                command = adb_location + "adb shell ps |grep screenrecord"
+                proc_kill = subprocess.check_output(command, shell=True)
+                proc_kill = proc_kill.decode('utf-8')
+                proc_kill = list(filter(None, proc_kill.split(' ')))
+                record_id = proc_kill[1]
+                command = adb_location + "adb shell kill -2 " + record_id
+                subprocess.check_call(command, shell=True)
 
             # 단말기 안에 xml 파일 전부 제거
             command = adb_location + "adb shell rm /sdcard/xml/*"
@@ -220,7 +230,7 @@ class DeviceController:
             proc_kill = proc_kill.decode('utf-8')  # str형태로 캐스팅
             proc_kill = list(filter(None, proc_kill.split(' '))) # 공백문자 제거하여 리스트형태로 생성
             tcpdump_id = proc_kill[1]
-            command = adb_location + "adb shell su -c kill -9 " +  tcpdump_id
+            command = adb_location + "adb shell su -c kill -2 " +  tcpdump_id
             subprocess.check_call(command, shell=True)
 
             # 실행되어있는 앱 종료
@@ -228,14 +238,16 @@ class DeviceController:
             subprocess.check_call(command, shell=True)
 
             # pcap파일 pull
-            command = adb_location + "adb pull " + pcap_save_directory + pcap_name + ' ' +\
+            if(proc_record.poll() is not None):
+                command = adb_location + "adb pull " + pcap_save_directory + pcap_name + ' ' +\
                 save_directory + 'pcap/'
-            subprocess.check_call(command, shell=True)
+                subprocess.check_call(command, shell=True)
 
             # mp4파일 pull
-            command = adb_location + "adb pull " + pcap_save_directory + mp4_name + ' ' +\
-                save_directory + 'record/'
-            subprocess.check_call(command, shell=True)
+            if(proc_tcpdump.poll() is not None):
+                command = adb_location + "adb pull " + pcap_save_directory + mp4_name + ' ' +\
+                    save_directory + 'record/'
+                subprocess.check_call(command, shell=True)
 
 
             # 단말기 내부의 mp4파일 삭제

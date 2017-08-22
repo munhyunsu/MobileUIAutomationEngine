@@ -140,7 +140,11 @@ class DeviceController:
                     snap_time = datetime.datetime.now() - initial_time
                     command = adb_location + "adb shell su -c uiautomator dump /sdcard/xml/" +\
                         str(int(snap_time.total_seconds())) + ".xml"
-                    subprocess.check_call(command, shell=True)
+                    uiautomator_output = subprocess.check_output(command, shell=True)
+                    uiautomator_output = uiautomator_output.decode('utf-8')
+                    if "ERROR" in uiautomator_output:
+                        print("uiautomator error app")
+                        break
 
                     # 서버에서 앱 실행전에 uiautomator가 동작하면 파일이 생성되지 않는 문제가 존재
                     try:

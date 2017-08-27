@@ -46,7 +46,7 @@ def main():
             # APK파일 하나씩 테스트 진행
             controller.run_test(apk)
         except Exception as e:
-            raise e
+            continue
             # 발생하는 Exception 종류가 뭐가있나?
 
 if __name__ == '__main__':

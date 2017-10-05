@@ -134,7 +134,7 @@ class DeviceController:
 
             while(event_index < num_of_event):
                 prev_count = -1
-
+                total_count = 0
                 while(True):
                     # uiautomator를 batch job으로 무한반복시키면서 node 개수 파악 
                     snap_time = datetime.datetime.now() - initial_time
@@ -177,7 +177,7 @@ class DeviceController:
                         count = count + 1
 
                     # 노드개수가 5개의 xml파일동안 동일하면 렌더링 완료
-                    if(count == 3):
+                    if(count == 3 || total_count >= 20):
                         print('event detected')
                         snap_time = datetime.datetime.now() - initial_time
                         print('snap time : ' + str(int(snap_time.total_seconds())) + '\n\n')
@@ -203,7 +203,9 @@ class DeviceController:
                         else:
                             command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 3"
                             subprocess.check_call(command, shell=True, stdout=None)
+                        total_count = 0
                         break
+                    total_count += 1
 
 
                 event_index = event_index + 1

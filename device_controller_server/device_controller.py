@@ -95,9 +95,7 @@ class DeviceController:
         try:
             os.makedirs(save_directory + 'xml/' + pkg_name)
         except Exception as e:
-            print(e)
-            pass
-
+            return
         try:
             pcap_name = pkg_name + '.pcap'
             apk_name = pkg_name + '.apk'
@@ -177,7 +175,7 @@ class DeviceController:
                         count = count + 1
 
                     # 노드개수가 5개의 xml파일동안 동일하면 렌더링 완료
-                    if(count == 3 || total_count >= 20):
+                    if((count == 3) | (total_count >= 20)):
                         print('event detected')
                         snap_time = datetime.datetime.now() - initial_time
                         print('snap time : ' + str(int(snap_time.total_seconds())) + '\n\n')

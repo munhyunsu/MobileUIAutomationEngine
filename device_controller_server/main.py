@@ -41,7 +41,8 @@ def main():
     controller = DeviceController()
 
     # 디렉토리 안에 들어있는 모든  APK파일에 대해서 진행
-    for apk in apk_list:
+    for index in range(500):
+        apk = apk_list[index]
         try:
             # APK파일 하나씩 테스트 진행
             controller.run_test(apk)

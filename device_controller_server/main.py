@@ -1,8 +1,6 @@
 from device_controller import DeviceController
 import configparser
 import os
-import logging
-import logging.config
 
 
 def list_apk(path):
@@ -16,39 +14,28 @@ def list_apk(path):
     return result
 
 def main():
-    logging.config.fileConfig('logging.conf')
-    logger = logging.getLogger('device_controller')
 
+    # config.ini 설정변수 읽기
     try:
         config = configparser.ConfigParser()
         config.read('config.ini')
-    except Exception as e:
-        logging.error(e + ' config.ini파일 읽는중에 에러발생')
-        raise e
-
-    try:
         apk_directory = config.get('device_controller','apk_directory')
-    except Exception as e:
-        logging.error(e + ' apk_directory 읽는중 에러 발생')
-        raise e
-
-    try:
         apk_list = list_apk(apk_directory)
     except Exception as e:
-        logging.error(e + ' apk_list 가지고 오는 중 에러 발생')
+        print(str(e) + ' config.ini파일 읽는중에 에러발생')
         raise e
 
+    # DeviceController객체 생성
     controller = DeviceController()
 
     # 디렉토리 안에 들어있는 모든  APK파일에 대해서 진행
-    for index in range(500):
-        apk = apk_list[index]
+    for apk in apk_list:
         try:
             # APK파일 하나씩 테스트 진행
             controller.run_test(apk)
         except Exception as e:
+            # 예외가 발생한다면 앱 테스팅 중지 후 다음 앱 테스트 실행
             continue
-            # 발생하는 Exception 종류가 뭐가있나?
 
 if __name__ == '__main__':
     main()

@@ -11,17 +11,42 @@ from xml.etree.ElementTree import parse
 class DeviceController:
 
     def __init__(self):
-        self.init_config()
+        # 설정파일 읽어와서 환경변수 설정
+        try:
+            config = configparser.ConfigParser()
+            config.read("config.ini")
+
+            self.adb_location = config.get("device_controller",\
+                "adb_location")
+            self.apk_directory = config.get("device_controller",\
+                "apk_directory")
+            self.tcpdump_directory = config.get("device_controller",\
+                "tcpdump_directory")
+            self.pcap_save_directory = config.get("device_controller",\
+                "pcap_save_directory")
+            self.save_directory = config.get("device_controller",\
+                "save_directory")
+            self.save_directory = save_directory + \
+                datetime.datetime.now().strftime('%y%m%d') + '/'
+
+            os.makedirs(save_directory)
+        except FileExistsError as e: # 파일이 이미 존재한다면 넘어간다.
+            pass
+        except Exception as e:
+            raise e
+
 
     def reboot(self):
         """
-        단말기 재부팅시키기. adb shell reboot가 안정적인 재부팅 명령어인지는 확인해야한다.
-        adb shell reboot 명령어 실행 후, 10초간격으로 adb연결된 device가 있는지 확인(재부팅
-        완료되었는지 확인)
-        연결을 확인한 후 10초 후 함수 종료
-        output
-            - 재연결 확인이 완료되면 True반환
+        단말기 재부팅시키기.
+        adb shell reboot가 안정적인 재부팅 명령어인지는 확인해야한다.
+        adb shell reboot 명령어 실행 후, 10초간격으로 adb연결된 device가
+        있는지 확인(재부팅 완료되었는지 확인) 연결을 확인한 후
+        10초 후 함수 종료
+        output- 재연결 확인이 완료되면 True반환
         """
+
+        # 리부팅 명령어 실행
         command = adb_location + 'adb shell reboot'
         try:
             proc_reboot = subprocess.Popen(command, shell=True)
@@ -30,6 +55,9 @@ class DeviceController:
             logging.error(' adb shell reboot error')
             raise e
 
+
+        # 단말기가 재부팅 완료 후 연결이 정상적으로 되어있는지 확인
+        # adb device의 결과값을 확인
         command = adb_location + 'adb devices'
         while True:
             try:
@@ -49,36 +77,13 @@ class DeviceController:
 
         return True
 
-    def init_config(self):
-        """
-        설정파일 읽어오기
-        """
-        try:
-            config = configparser.ConfigParser()
-            config.read("config.ini")
-
-            global adb_location, apk_directory, tcpdump_directory,\
-                pcap_save_directory, save_directory
-
-            adb_location = config.get("device_controller","adb_location")
-            apk_directory = config.get("device_controller","apk_directory")
-            tcpdump_directory = config.get("device_controller", "tcpdump_directory")
-            pcap_save_directory = config.get("device_controller","pcap_save_directory")
-            save_directory = config.get("device_controller", "save_directory")
-            save_directory = save_directory + datetime.datetime.now().strftime('%y%m%d') + '/'
-
-            os.makedirs(save_directory)
-        except FileExistsError as e: # 파일이 이미 존재한다면 넘어간다.
-            pass
-        except Exception as e:
-            raise e
-
     def run_test(self, pkg_name):
         """
         APK파일 이름을 받아서 테스트 진행
-        설치 -> 실행 -> Random Test -> 종료 및 삭제 -> pcap,mp4 파일 추출
-        install 에서 에러났을경우에만 재부팅 하도록 한다. (단말기 공간이 모두 찼을경우 존재하므로)
-        [args]
+        설치 -> 실행 -> 테스트 -> 종료 및 삭제 -> pcap,mp4 파일 추출
+        install 에서 에러났을경우에만 재부팅 하도록 한다.
+        (단말기 공간이 모두 찼을경우 존재하므로)
+
         pkg_name : 패키지이름(APK파일 이름)
         """
 
@@ -198,6 +203,7 @@ class DeviceController:
                                 print('x : ' + str(x) + " y : " + str(y))
                                 command = adb_location + "adb shell input tap " + str(x) + " " + str(y)
                                 subprocess.check_call(command, shell=True, stdout=None)
+                        # 현재 화면에서 터치할 수 있는 개체가 없는경우에는 monkey로 랜덤 좌표 이벤트 발생
                         else:
                             command = adb_location + "adb shell monkey -p " + pkg_name + " --pct-touch 100 3"
                             subprocess.check_call(command, shell=True, stdout=None)
@@ -209,11 +215,14 @@ class DeviceController:
                 event_index = event_index + 1
 
 
+            # test를 마치고 csv로 저장
             file_session = open(save_directory + "/speed.csv", "a")
             file_session.write(pkg_name + "," + ','.join(str(a) for a in session) + "\n")
             file_session.close()
 
             # 화면녹화 프로세스 종료
+            # python subprocess kill로 죽지 않음
+            # adb 를 통해 프로세스번호 확인 후 kill시키기
             if(proc_record.poll() is None):
                 command = adb_location + "adb shell ps |grep screenrecord"
                 proc_kill = subprocess.check_output(command, shell=True)

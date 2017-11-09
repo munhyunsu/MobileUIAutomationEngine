@@ -28,3 +28,6 @@ Mobile Uiautomation Engine 내부에는Input Event Generator, Traffic Capturing,
 테스트는 다음과같이 진행됩니다.
 네이버앱을 예시로 들자면 앱 실행명령을 내린 뒤, uiautomator 명령을 지속적으로 내려 화면상에 나타나는 노드개수를 파악합니다. uiautomator 를 3번 처리하는동안 노드개수가 변함이 없다면 렌더링이 완료되었다고 인지합니다. uiautomator 3번처리하는 시간은 평균적으로 6~8초정도 소요됩니다. 즉, 6초에서 8초동안 화면에 변화가 없으면 렌더링 완료로 탐지합니다. 렌더링완료라고 인지하면 다음입력이벤트를 발생시킵니다. 다음 입력이벤트는 현재화면에서 터치할 수 있는 요소들의 좌표로 입력이벤트를 내립니다. 해당 방식을 반복적으로 실행하여 특정 개수 이벤트 발생을 완료하면 테스트가 종료됩니다.
 
+# Dependancy
+- Android SDK
+> - uiautomator, adb

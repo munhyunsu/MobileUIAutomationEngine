@@ -15,7 +15,8 @@ def main(argv):
     while len(key_stack) > 0:
         (node, level) = key_stack.pop()
         if hasattr(node, 'attrib') == True:
-            print('-'*level, node.attrib['class'], node.attrib['bounds'])
+            print('-'*level, node.attrib['class'], node.attrib['bounds'], 
+                             node.attrib['resource-id'])
         nodes = node.findall('node')
         nodes.reverse()
         for cnode in nodes:
